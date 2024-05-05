@@ -44,20 +44,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['data']) && $_GET['data'
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tambah_user'])) {
     include 'koneksi.php'; // Include file koneksi ke database
     $nama_user = $_POST['nama_user'];
-    $email = $_POST['email'];
+    $alamat_user = $_POST['alamat_user'];
+    $nohp_user = $_POST['nohp_user'];
+    $username = $_POST['username'];
     $password = $_POST['password'];
 
-    $result = tambahUser($koneksi, $nama_user, $email, $password);
+    $result = tambahUser($koneksi, $nama_user, $alamat_user, $nohp_user, $username, $password);
     echo $result;
 }
 
 // Endpoint untuk login user
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     include 'koneksi.php'; // Include file koneksi ke database
-    $email = $_POST['email'];
+    $username = $_POST['username'];
     $password = $_POST['password'];
 
-    $result = loginUser($koneksi, $email, $password);
+    $result = loginUser($koneksi, $username, $password);
     echo $result;
 }
 
@@ -66,17 +68,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
     include 'koneksi.php'; // Include file koneksi ke database
     $id_user = $_POST['id_user'];
     $nama_user = $_POST['nama_user'];
-    $email = $_POST['email'];
+    $alamat_user = $_POST['alamat_user'];
+    $nohp_user = $_POST['nohp_user'];
+    $username = $_POST['username'];
     $password = $_POST['password'];
 
-    $result = editUser($koneksi, $id_user, $nama_user, $email, $password);
+    $result = editUser($koneksi, $id_user, $nama_user, $alamat_user, $nohp_user, $username, $password);
     echo $result;
 }
 
 // Fungsi tambahUser
-function tambahUser($koneksi, $nama_user, $email, $password) {
+function tambahUser($koneksi, $nama_user, $alamat_user, $nohp_user, $username, $password) {
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-    $query = "INSERT INTO tb_user (nama_user, email, password) VALUES ('$nama_user', '$email', '$hashed_password')";
+    $query = "INSERT INTO tb_user (nama_user, alamat_user, nohp_user, username, password) VALUES ('$nama_user', '$alamat_user', '$nohp_user', '$username', '$hashed_password')";
     $result = mysqli_query($koneksi, $query);
 
     if ($result) {
@@ -97,8 +101,8 @@ function tambahUser($koneksi, $nama_user, $email, $password) {
 }
 
 // Fungsi loginUser
-function loginUser($koneksi, $email, $password) {
-    $query = "SELECT * FROM tb_user WHERE email='$email'";
+function loginUser($koneksi, $username, $password) {
+    $query = "SELECT * FROM tb_user WHERE username='$username'";
     $result = mysqli_query($koneksi, $query);
 
     if (mysqli_num_rows($result) == 1) {
@@ -114,7 +118,7 @@ function loginUser($koneksi, $email, $password) {
             $response = [
                 'sukses' => false,
                 'status' => 401,
-                'pesan' => 'Login gagal, email atau password salah',
+                'pesan' => 'Login gagal, username atau password salah',
                 'data'=> null
             ];
         }
@@ -122,7 +126,7 @@ function loginUser($koneksi, $email, $password) {
         $response = [
             'sukses' => false,
             'status' => 401,
-            'pesan' => 'Login gagal, email atau password salah',
+            'pesan' => 'Login gagal, username atau password salah',
             'data'=> null
         ];
     }
@@ -130,14 +134,14 @@ function loginUser($koneksi, $email, $password) {
     return json_encode($response);
 }
 // Fungsi editUser
-function editUser($koneksi, $id_user, $nama_user, $email, $password) {
+function editUser($koneksi, $id_user, $nama_user, $alamat_user, $nohp_user, $username, $password) {
     // Periksa apakah password baru kosong
     if (!empty($password)) {
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $query = "UPDATE tb_user SET nama_user='$nama_user',  email='$email', password='$hashed_password' WHERE id_user=$id_user";
+        $query = "UPDATE tb_user SET nama_user='$nama_user', alamat_user='$alamat_user', nohp_user='$nohp_user', username='$username', password='$hashed_password' WHERE id_user=$id_user";
     } else {
         // Jika password kosong, gunakan password lama
-        $query = "UPDATE tb_user SET nama_user='$nama_user',  email='$email' WHERE id_user=$id_user";
+        $query = "UPDATE tb_user SET nama_user='$nama_user', alamat_user='$alamat_user', nohp_user='$nohp_user', username='$username' WHERE id_user=$id_user";
     }
 
     $result = mysqli_query($koneksi, $query);
