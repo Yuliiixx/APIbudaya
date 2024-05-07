@@ -5,9 +5,40 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Origin: *');
 
+// Fungsi untuk mengambil data pahlawan dari database
+function ambilData() {
+    global $koneksi;
 
-// Fungsi Create (Tambah Data)
-function tambahData($data) {
+    $query = "SELECT * FROM tb_pahlawan";
+    $result = mysqli_query($koneksi, $query);
+
+    $pahlawan = [];
+
+    if (mysqli_num_rows($result) > 0) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $pahlawan[] = $row;
+        }
+    }
+
+    return json_encode($pahlawan);
+}
+
+// Fungsi untuk menghasilkan nama file acak untuk foto pahlawan
+function generateRandomFileName($prefix = '', $suffix = '') {
+    // Generate unique ID
+    $uniqueId = uniqid();
+
+    // Menggunakan md5 untuk membuat hash dari unique ID
+    $randomHash = md5($uniqueId);
+
+    // Menggabungkan prefix, hash acak, dan akhiran file jika diperlukan
+    $randomFileName = $prefix . $randomHash . $suffix;
+
+    return $randomFileName;
+}
+
+// Fungsi tambah data pahlawan
+function tambahDataPahlawan($data) {
     global $koneksi;
 
     $nama = $data['nama'];
@@ -17,9 +48,14 @@ function tambahData($data) {
     $jenis_kelamin = $data['jenis_kelamin'];
     $deskripsi = $data['deskripsi'];
 
-    $query = "INSERT INTO tb_pahlawan (nama, foto, tanggal_lahir, asal, jenis_kelamin, deskripsi) VALUES ('$nama', '$foto', '$tanggal_lahir', '$asal', '$jenis_kelamin', '$deskripsi')";
+    $outputfile = "gambar/" . generateRandomFileName('foto', ''); // Menghilangkan ekstensi file
+    $filehandler = fopen($outputfile, 'wb');
+    fwrite($filehandler, base64_decode($foto));
+    fclose($filehandler);
 
-    if(mysqli_query($koneksi, $query)) {
+    $query = "INSERT INTO tb_pahlawan (nama, foto, tanggal_lahir, asal, jenis_kelamin, deskripsi) VALUES ('$nama', '$outputfile', '$tanggal_lahir', '$asal', '$jenis_kelamin', '$deskripsi')";
+
+    if (mysqli_query($koneksi, $query)) {
         $response = [
             'sukses' => true,
             'status' => 200,
@@ -36,36 +72,34 @@ function tambahData($data) {
     return json_encode($response);
 }
 
-// Fungsi Read (Ambil Data)
-function ambilData() {
+// Fungsi edit data pahlawan
+function editDataPahlawan($data) {
     global $koneksi;
 
-    $query = "SELECT * FROM tb_pahlawan";
-    $result = mysqli_query($koneksi, $query);
-
-    $data = array();
-    while($row = mysqli_fetch_assoc($result)) {
-        $data[] = $row;
+    // Cek apakah parameter ID pahlawan ada
+    if (!isset($data['id_pahlawan'])) {
+        return json_encode(['sukses' => false, 'status' => 400, 'pesan' => 'ID pahlawan tidak ditemukan']);
     }
 
-    return json_encode($data);
-}
-
-// Fungsi Update (Edit Data)
-function editData($id, $data) {
-    global $koneksi;
-
+    $id_pahlawan = $data['id_pahlawan']; // Perubahan disini
     $nama = $data['nama'];
-    $foto = $data['foto'];
     $tanggal_lahir = $data['tanggal_lahir'];
     $asal = $data['asal'];
     $jenis_kelamin = $data['jenis_kelamin'];
     $deskripsi = $data['deskripsi'];
 
+    // Cek keberadaan ID pahlawan dalam database sebelum melakukan edit
+    $queryCekId = "SELECT id_pahlawan FROM tb_pahlawan WHERE id_pahlawan = '$id_pahlawan'";
+    $resultCekId = mysqli_query($koneksi, $queryCekId);
+    
+    if (mysqli_num_rows($resultCekId) == 0) {
+        return json_encode(['sukses' => false, 'status' => 400, 'pesan' => 'ID pahlawan tidak ditemukan']);
+    }
 
-    $query = "UPDATE tb_pahlawan SET nama='$nama', foto='$foto', tanggal_lahir='$tanggal_lahir', asal='$asal', jenis_kelamin='$jenis_kelamin', deskripsi='$deskripsi' WHERE id_pahlawan=$id";
+    // Proses edit data pahlawan...
+    $query = "UPDATE tb_pahlawan SET nama = '$nama', tanggal_lahir = '$tanggal_lahir', asal = '$asal', jenis_kelamin = '$jenis_kelamin', deskripsi = '$deskripsi' WHERE id_pahlawan = '$id_pahlawan'";
 
-    if(mysqli_query($koneksi, $query)) {
+    if (mysqli_query($koneksi, $query)) {
         $response = [
             'sukses' => true,
             'status' => 200,
@@ -82,13 +116,25 @@ function editData($id, $data) {
     return json_encode($response);
 }
 
-// Fungsi Delete (Hapus Data)
-function hapusData($id) {
+// Fungsi hapus data pahlawan
+function hapusDataPahlawan($id_pahlawan) {
     global $koneksi;
 
-    $query = "DELETE FROM tb_pahlawan WHERE id_pahlawan=$id";
+    // Ambil lokasi foto pahlawan sebelum dihapus
+    $querySelectFoto = "SELECT foto FROM tb_pahlawan WHERE id_pahlawan = '$id_pahlawan'"; // Perubahan disini
+    $resultSelectFoto = mysqli_query($koneksi, $querySelectFoto);
+    $row = mysqli_fetch_assoc($resultSelectFoto);
+    $foto = $row['foto'];
 
-    if(mysqli_query($koneksi, $query)) {
+    // Jika foto pahlawan ada, hapus foto dari server
+    if (!empty($foto) && file_exists($foto)) {
+        unlink($foto);
+    }
+
+    // Buat query untuk hapus data pahlawan dari database
+    $query = "DELETE FROM tb_pahlawan WHERE id_pahlawan='$id_pahlawan'"; // Perubahan disini
+
+    if (mysqli_query($koneksi, $query)) {
         $response = [
             'sukses' => true,
             'status' => 200,
@@ -115,30 +161,30 @@ switch ($method) {
         break;
     case 'POST':
         // Cek jika parameter action ada
-        if(isset($_POST['action'])) {
+        if (isset($_POST['action'])) {
             $action = $_POST['action'];
             // Cek jenis action
             switch ($action) {
                 case 'tambah':
                     // Tambah data
-                    echo tambahData($_POST);
+                    echo tambahDataPahlawan($_POST);
                     break;
                 case 'edit':
                     // Cek jika parameter id_pahlawan ada
-                    if(isset($_POST['id_pahlawan'])) {
-                        $id = $_POST['id_pahlawan'];
+                    if (isset($_POST['id_pahlawan'])) {
+                        $id_pahlawan = $_POST['id_pahlawan']; // Perubahan disini
                         // Edit data
-                        echo editData($id, $_POST);
+                        echo editDataPahlawan($_POST);
                     } else {
                         echo json_encode(['sukses' => false, 'status' => 400, 'pesan' => 'ID pahlawan tidak ditemukan']);
                     }
                     break;
                 case 'hapus':
                     // Cek jika parameter id_pahlawan ada
-                    if(isset($_POST['id_pahlawan'])) {
-                        $id = $_POST['id_pahlawan'];
+                    if (isset($_POST['id_pahlawan'])) {
+                        $id_pahlawan = $_POST['id_pahlawan']; // Perubahan disini
                         // Hapus data
-                        echo hapusData($id);
+                        echo hapusDataPahlawan($id_pahlawan);
                     } else {
                         echo json_encode(['sukses' => false, 'status' => 400, 'pesan' => 'ID pahlawan tidak ditemukan']);
                     }
