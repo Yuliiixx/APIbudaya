@@ -83,10 +83,16 @@ function editDataPahlawan($data) {
 
     $id_pahlawan = $data['id_pahlawan']; // Perubahan disini
     $nama = $data['nama'];
+    $foto = $data['foto'];
     $tanggal_lahir = $data['tanggal_lahir'];
     $asal = $data['asal'];
     $jenis_kelamin = $data['jenis_kelamin'];
     $deskripsi = $data['deskripsi'];
+
+    $outputfile = "gambar/" . generateRandomFileName('foto', ''); // Menghilangkan ekstensi file
+    $filehandler = fopen($outputfile, 'wb');
+    fwrite($filehandler, base64_decode($foto));
+    fclose($filehandler);
 
     // Cek keberadaan ID pahlawan dalam database sebelum melakukan edit
     $queryCekId = "SELECT id_pahlawan FROM tb_pahlawan WHERE id_pahlawan = '$id_pahlawan'";
@@ -95,9 +101,10 @@ function editDataPahlawan($data) {
     if (mysqli_num_rows($resultCekId) == 0) {
         return json_encode(['sukses' => false, 'status' => 400, 'pesan' => 'ID pahlawan tidak ditemukan']);
     }
+    
 
     // Proses edit data pahlawan...
-    $query = "UPDATE tb_pahlawan SET nama = '$nama', tanggal_lahir = '$tanggal_lahir', asal = '$asal', jenis_kelamin = '$jenis_kelamin', deskripsi = '$deskripsi' WHERE id_pahlawan = '$id_pahlawan'";
+    $query = "UPDATE tb_pahlawan SET nama = '$nama', foto='$outputfile', tanggal_lahir = '$tanggal_lahir', asal = '$asal', jenis_kelamin = '$jenis_kelamin', deskripsi = '$deskripsi' WHERE id_pahlawan = '$id_pahlawan'";
 
     if (mysqli_query($koneksi, $query)) {
         $response = [
